@@ -425,7 +425,7 @@ class WastePickupSimulation():
 					'duration_matrix': self.config['duration_matrix']
 				}
 
-				filename = 'temp/routing_input.json'
+				filename = '/home/temp/routing_input.json'
 				os.makedirs(os.path.dirname(filename), exist_ok=True)
 				with open(filename, 'w') as outfile:
 					json.dump(routing_input, outfile, indent=4)
@@ -434,7 +434,7 @@ class WastePickupSimulation():
 				#self.routing_output = heuristic_router(routing_input)
 
 				# Comment/uncomment: genetic algorithm router
-				filename = '/log/routing_optimizer_log.txt'
+				filename = '/home/log/routing_optimizer_log.txt'
 				os.makedirs(os.path.dirname(filename), exist_ok=True)
 				os.system(f"/home/routing_optimizer>{filename}") # ***
 				with open('temp/routing_output.json') as infile:
