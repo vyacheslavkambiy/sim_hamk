@@ -10,9 +10,18 @@ from geopy.distance import geodesic
 from os.path import exists
 from datetime import datetime
 import os
-
+from azure.storage.blob import BlobServiceClient
+from azure.identity import DefaultAzureCredential  # Import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 from routing_api import get_distance_and_duration_matrix
+vault_url = "https://keyvaultforhamk.vault.azure.net/"
+secret_name = "inputdatatoazureblob"  # Replace with the name of your secret
+credential = DefaultAzureCredential()
+key_vault_secret = SecretClient(vault_url=vault_url, credential=credential).get_secret(secret_name)
 
+# Use the fetched connection string
+connection_string = key_vault_secret.value
+container_name = "output"
 
 def time_to_string(minutes):
 	hours = math.floor(minutes/60)
@@ -425,7 +434,7 @@ class WastePickupSimulation():
 				#self.routing_output = heuristic_router(routing_input)
 
 				# Comment/uncomment: genetic algorithm router
-				filename = 'log/routing_optimizer_log.txt'
+				filename = '/log/routing_optimizer_log.txt'
 				os.makedirs(os.path.dirname(filename), exist_ok=True)
 				os.system(f"routing_optimizer>{filename}") # ***
 				with open('temp/routing_output.json') as infile:
@@ -449,21 +458,26 @@ class WastePickupSimulation():
 		self.total_time = end_time-start_time # Excuding config preprocessing
 		self.log(f"Simulation finished with {self.total_time}s of computing")
 
-		filename = f"log/routes_log_{self.run_start}.csv"
+		filename = f"/log/routes_log_{self.run_start}.csv"
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
 		with open(filename, 'w') as f:
 			print("x,y,t,v,l,c", file=f)
 			for vehicle_index, vehicle_log in enumerate(self.route_logs):
 				for sample in vehicle_log:
 					print(f"{sample['lonlat'][0]},{sample['lonlat'][1]},{sample['time']},{vehicle_index},{sample['load_level']},{sample['load_capacity']}", file=f)
+		# Save CSV files to Azure Blob Storage
+		self.upload_csv_to_azure(filename)
 
-		filename = f"log/pickup_sites_log_{self.run_start}.csv"
+		filename = f"/log/pickup_sites_log_{self.run_start}.csv"
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
 		with open(filename, 'w') as f:
 			print("x,y,t,l,c", file=f)
 			for pickup_site_log in self.pickup_site_logs:
 				for sample in pickup_site_log:
 					print(f"{sample['lonlat'][0]},{sample['lonlat'][1]},{sample['time']},{sample['level']},{sample['capacity']}", file=f)
+		# Save CSV files to Azure Blob Storage
+		self.upload_csv_to_azure(filename)
+		
 
 
 	def save_log(self):
@@ -472,13 +486,13 @@ class WastePickupSimulation():
 		"""
 		# Get log from saved Save log as csv file
 		json_log = json.dumps(self.action_log)
-		filename = f"log/sim_log_{self.run_start}.json"
+		filename = f"/log/sim_log_{self.run_start}.json"
 		# TODO! select folder structure for saving data
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
 		with open(f'{filename}', 'w') as f:
 			json.dump(json_log, f, indent=4)
-
-
+		# Save JSON file to Azure Blob Storage
+		self.upload_json_to_azure(filename)
 	def sim_record(self):
 		"""
 		"""
@@ -488,13 +502,39 @@ class WastePickupSimulation():
 		#self.sim_records['vehicles_distance'] = [[v.index, v.vehicle_odometer] for v in self.vehicles] # time of vehicles driving
 		# vechicle driving distance
 		# level listeners alerts # are added in warnings level
-		filename = f"log/sim_record_{self.run_start}.json"
+		filename = f"/log/sim_record_{self.run_start}.json"
 
 		os.makedirs(os.path.dirname(filename), exist_ok=True)
 		with open(f'{filename}', 'w') as f:
 			json.dump(self.sim_records, f, indent=4)
-
+		
 		print(f"Simulaton record saved to {filename}")
+		# Save JSON file to Azure Blob Storage
+		self.upload_json_to_azure(filename)
+
+	
+
+	
+	
+
+	def upload_csv_to_azure(self, blob_name):
+		blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+		container_client = blob_service_client.get_container_client(container_name)
+		blob_client = container_client.get_blob_client(blob_name)
+
+		with open(blob_name, "rb") as data:
+			blob_client.upload_blob(data, overwrite=True)
+	def upload_json_to_azure(self, blob_name):
+			
+		blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+		container_client = blob_service_client.get_container_client(container_name)
+		blob_client = container_client.get_blob_client(blob_name)
+
+		with open(blob_name, "rb") as data:
+			blob_client.upload_blob(data, overwrite=True)
+
+
+
 
 
 def preprocess_sim_config(sim_config, sim_config_filename):
