@@ -440,6 +440,7 @@ class WastePickupSimulation():
 				with open('temp/routing_output.json') as infile:
 					self.routing_output = json.load(infile)
 
+			
 			# Assign routes
 			for vehicle_index, vehicle_routing_output in enumerate(self.routing_output['days'][0]['vehicles']):
 				self.vehicles[vehicle_index].assign_route(vehicle_routing_output['route'])
