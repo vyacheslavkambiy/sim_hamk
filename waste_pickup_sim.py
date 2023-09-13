@@ -434,10 +434,10 @@ class WastePickupSimulation():
 				#self.routing_output = heuristic_router(routing_input)
 
 				# Comment/uncomment: genetic algorithm router
-				filename = '/log/routing_optimizer_log.txt'
+				filename = './log/routing_optimizer_log.txt'
 				os.makedirs(os.path.dirname(filename), exist_ok=True)
-				os.system(f"routing_optimizer>{filename}") # ***
-				with open('temp/routing_output.json') as infile:
+				os.system(f"./routing_optimizer>{filename}") # ***
+				with open('./temp/routing_output.json') as infile:
 					self.routing_output = json.load(infile)
 
 			
